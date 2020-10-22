@@ -82,16 +82,15 @@ bool UDPClient::Open(const IPEndpoint& localEndpoint, const IPEndpoint& remoteEn
     }
 
     asio::ip::udp::endpoint asioRemoteEndpoint(address, remoteEndpoint.port);
-    auto cb = [self, callback](const std::error_code& ec) {
+    auto cb = [self, callback, asioRemoteEndpoint, ec]() {
         self->connecting = false;
         if (!self->canceled)
         {
-            callback(self->executor, std::move(self->socket), ec);
+            callback(self->executor, std::move(self->socket), asioRemoteEndpoint, ec);
         }
     };
 
-    // On UDP sockets, connecting only sets the address used in future async_send.
-    socket.async_connect(asioRemoteEndpoint, executor->wrap(cb));
+    executor->post(cb);
     return true;
 }
 
@@ -105,17 +104,7 @@ void UDPClient::HandleResolveResult(const connect_callback_t& callback,
     }
     else
     {
-        // attempt a connection to each endpoint in the iterator until we connect
-        auto cb = [self = shared_from_this(), callback](const std::error_code& ec,
-                                                        asio::ip::udp::resolver::iterator endpoints) {
-            self->connecting = false;
-            if (!self->canceled)
-            {
-                callback(self->executor, std::move(self->socket), ec);
-            }
-        };
-
-        asio::async_connect(this->socket, endpoints, this->condition, this->executor->wrap(cb));
+        callback(executor, std::move(socket), *endpoints, ec);
     }
 }
 
@@ -125,7 +114,8 @@ bool UDPClient::PostConnectError(const connect_callback_t& callback, const std::
         self->connecting = false;
         if (!self->canceled)
         {
-            callback(self->executor, std::move(self->socket), ec);
+            asio::ip::udp::endpoint invalidEndpoint;
+            callback(self->executor, std::move(self->socket), invalidEndpoint, ec);
         }
     };
     executor->post(cb);

@@ -30,12 +30,13 @@ class UDPSocketChannel final : public IAsyncChannel
 
 public:
     static std::shared_ptr<IAsyncChannel> Create(std::shared_ptr<exe4cpp::StrandExecutor> executor,
-                                                 asio::ip::udp::socket socket)
+                                                 asio::ip::udp::socket socket,
+                                                 asio::ip::udp::endpoint remoteEndpoint)
     {
-        return std::make_shared<UDPSocketChannel>(executor, std::move(socket));
+        return std::make_shared<UDPSocketChannel>(executor, std::move(socket), remoteEndpoint);
     }
 
-    UDPSocketChannel(const std::shared_ptr<exe4cpp::StrandExecutor>& executor, asio::ip::udp::socket socket);
+    UDPSocketChannel(const std::shared_ptr<exe4cpp::StrandExecutor>& executor, asio::ip::udp::socket socket, asio::ip::udp::endpoint remoteEndpoint);
 
 protected:
     void BeginReadImpl(ser4cpp::wseq_t dest) final;
@@ -44,6 +45,7 @@ protected:
 
 private:
     asio::ip::udp::socket socket;
+    asio::ip::udp::endpoint remoteEndpoint;
 };
 
 } // namespace opendnp3

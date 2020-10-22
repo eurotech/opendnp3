@@ -18,29 +18,39 @@
  * limitations under the License.
  */
 
+#include <iostream>
 #include "channel/UDPSocketChannel.h"
 
 namespace opendnp3
 {
 
 UDPSocketChannel::UDPSocketChannel(const std::shared_ptr<exe4cpp::StrandExecutor>& executor,
-                                   asio::ip::udp::socket socket)
-    : IAsyncChannel(executor), socket(std::move(socket))
+                                   asio::ip::udp::socket socket,
+                                   asio::ip::udp::endpoint remoteEndpoint)
+    : IAsyncChannel(executor), socket(std::move(socket)), remoteEndpoint(remoteEndpoint)
 {
 }
 
 void UDPSocketChannel::BeginReadImpl(ser4cpp::wseq_t dest)
 {
-    auto callback = [this](const std::error_code& ec, size_t num) { this->OnReadCallback(ec, num); };
+    auto senderEndpoint = std::make_shared<asio::ip::udp::endpoint>();
 
-    socket.async_receive(asio::buffer(dest, dest.length()), this->executor->wrap(callback));
+    auto callback = [this, dest, senderEndpoint](const std::error_code& ec, size_t num) {
+        if (*senderEndpoint == this->remoteEndpoint) {
+          this->OnReadCallback(ec, num);
+        } else {
+          this->BeginReadImpl(dest);
+        }
+    };
+
+    socket.async_receive_from(asio::buffer(dest, dest.length()), *senderEndpoint, this->executor->wrap(callback));
 }
 
 void UDPSocketChannel::BeginWriteImpl(const ser4cpp::rseq_t& buffer)
 {
     auto callback = [this](const std::error_code& ec, size_t num) { this->OnWriteCallback(ec, num); };
 
-    socket.async_send(asio::buffer(buffer, buffer.length()), this->executor->wrap(callback));
+    socket.async_send_to(asio::buffer(buffer, buffer.length()), this->remoteEndpoint, this->executor->wrap(callback));
 }
 
 void UDPSocketChannel::ShutdownImpl()

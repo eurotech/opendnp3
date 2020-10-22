@@ -35,7 +35,7 @@ class UDPClient final : public std::enable_shared_from_this<UDPClient>, private 
 
 public:
     typedef std::function<void(
-        const std::shared_ptr<exe4cpp::StrandExecutor>& executor, asio::ip::udp::socket, const std::error_code& ec)>
+        const std::shared_ptr<exe4cpp::StrandExecutor>& executor, asio::ip::udp::socket, asio::ip::udp::endpoint, const std::error_code& ec)>
         connect_callback_t;
 
     static std::shared_ptr<UDPClient> Create(const Logger& logger,

@@ -70,7 +70,7 @@ bool UDPClientIOHandler::TryOpen(const TimeDuration& delay)
     }
 
     auto cb = [=, self = shared_from_this()](const std::shared_ptr<exe4cpp::StrandExecutor>& executor,
-                                             asio::ip::udp::socket socket, const std::error_code& ec) -> void {
+                                             asio::ip::udp::socket socket, asio::ip::udp::endpoint resolvedRemoteEndpoint, const std::error_code& ec) -> void {
         if (ec)
         {
             FORMAT_LOG_BLOCK(this->logger, flags::WARN, "Error opening UDP socket: %s", ec.message().c_str());
@@ -94,7 +94,7 @@ bool UDPClientIOHandler::TryOpen(const TimeDuration& delay)
 
             if (client)
             {
-                this->OnNewChannel(UDPSocketChannel::Create(executor, std::move(socket)));
+                this->OnNewChannel(UDPSocketChannel::Create(executor, std::move(socket), resolvedRemoteEndpoint));
             }
         }
     };
